@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+
+<!-- Statistics Cards -->
+<div class="stats-grid">
+    <div class="stat-card total">
+        <div class="number">{{ stats.total }}</div>
+        <div class="label">Total Processed</div>
+    </div>
+    <div class="stat-card valid">
+        <div class="number">{{ stats.valid }}</div>
+        <div class="label">Valid Files</div>
+    </div>
+    <div class="stat-card invalid">
+        <div class="number">{{ stats.invalid }}</div>
+        <div class="label">Invalid Files</div>
+    </div>
+    <div class="stat-card skipped">
+        <div class="number">{{ stats.skipped }}</div>
+        <div class="label">Skipped (Duplicates)</div>
+    </div>
+</div>
+
+<!-- Actions -->
+<div class="card">
+    <h2>⚡ Actions</h2>
+    <div class="actions">
+        <!-- FTP Scan -->
+        <form method="POST" action="/scan" style="display:inline;">
+            <button type="submit" class="btn btn-primary" id="btn-scan-ftp">
+                📡 Scan FTP & Process Files
+            </button>
+        </form>
+
+        <!-- File Upload -->
+        <form method="POST" action="/upload" enctype="multipart/form-data" class="file-input-wrapper">
+            <input type="file" name="file" accept=".csv" id="file-upload-input">
+            <button type="submit" class="btn btn-success" id="btn-upload-file">
+                📤 Upload & Validate
+            </button>
+        </form>
+
+        <!-- FTP Status Check -->
+        <button class="btn btn-outline" id="btn-check-ftp" onclick="checkFTP()">
+            🔌 Check FTP Connection
+        </button>
+    </div>
+
+    <!-- FTP Status display -->
+    <div id="ftp-status" style="margin-top: 1rem; display: none;">
+        <div class="ftp-status">
+            <span class="status-dot" id="ftp-dot"></span>
+            <span id="ftp-message">Checking...</span>
+        </div>
+    </div>
+</div>
+
+<!-- FTP Server Info -->
+<div class="card">
+    <h2>🖥️ FTP Server Configuration</h2>
+    <table>
+        <tbody>
+            <tr><td><strong>Host</strong></td><td>{{ ftp_host }}</td></tr>
+            <tr><td><strong>Port</strong></td><td>{{ ftp_port }}</td></tr>
+            <tr><td><strong>Username</strong></td><td>{{ ftp_user }}</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Processing History -->
+<div class="card">
+    <h2>📋 Processing History</h2>
+    {% if records %}
+    <div style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Filename</th>
+                    <th>Status</th>
+                    <th>Processed At</th>
+                    <th>Archive Path</th>
+                    <th>Error ID</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in records %}
+                <tr>
+                    <td><strong>{{ record.filename }}</strong></td>
+                    <td>
+                        <span class="badge badge-{{ record.status }}">
+                            {{ record.status }}
+                        </span>
+                    </td>
+                    <td>{{ record.processed_at[:19] }}</td>
+                    <td style="font-size:0.8rem;">{{ record.archive_path or '—' }}</td>
+                    <td style="font-size:0.8rem;">{{ record.error_id[:8] ~ '...' if record.error_id else '—' }}</td>
+                    <td class="error-text">{{ record.validation_errors or '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="icon">📂</div>
+        <p>No files have been processed yet.</p>
+        <p>Use the FTP scan or upload a CSV file to get started.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function checkFTP() {
+    const statusDiv = document.getElementById('ftp-status');
+    const dot = document.getElementById('ftp-dot');
+    const msg = document.getElementById('ftp-message');
+
+    statusDiv.style.display = 'block';
+    msg.textContent = 'Checking connection...';
+    dot.className = 'status-dot';
+
+    fetch('/check-ftp')
+        .then(r => r.json())
+        .then(data => {
+            if (data.connected) {
+                dot.className = 'status-dot connected';
+                msg.textContent = `Connected to ${data.host}:${data.port} — ${data.files_found} CSV file(s) found`;
+            } else {
+                dot.className = 'status-dot disconnected';
+                msg.textContent = `Cannot connect to ${data.host}:${data.port}`;
+            }
+        })
+        .catch(err => {
+            dot.className = 'status-dot disconnected';
+            msg.textContent = 'Connection check failed: ' + err.message;
+        });
+}
+</script>
+
+{% endblock %}

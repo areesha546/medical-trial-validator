@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Error Logs{% endblock %}
+
+{% block content %}
+
+<div class="card">
+    <h2>🔴 Validation Error Logs</h2>
+    {% if logs %}
+    <div style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Error ID</th>
+                    <th>Date/Time</th>
+                    <th>Filename</th>
+                    <th>Category</th>
+                    <th>Source</th>
+                    <th>Errors</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td style="font-size:0.8rem; font-family:monospace;">{{ log.error_id[:12] }}...</td>
+                    <td>{{ log.datetime[:19] }}</td>
+                    <td><strong>{{ log.original_filename }}</strong></td>
+                    <td>
+                        <span class="badge badge-invalid">{{ log.failure_category.replace('_', ' ') }}</span>
+                    </td>
+                    <td style="font-size:0.8rem;">{{ log.generated_via }}</td>
+                    <td>
+                        <details>
+                            <summary>{{ log.total_errors }} error(s)</summary>
+                            <ul style="margin-top:0.5rem; font-size:0.8rem;">
+                                {% for err in log.errors %}
+                                <li>
+                                    <strong>[{{ err.rule }}]</strong> {{ err.message }}
+                                    {% if err.row_number %} (row {{ err.row_number }}){% endif %}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </details>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="icon">✅</div>
+        <p>No validation errors recorded yet.</p>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}
