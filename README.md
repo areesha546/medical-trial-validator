@@ -1,390 +1,251 @@
-# 🏥 Centrala University Medical Trial Data Validation and Archival System
+Centrala University Medical Trial Data Validation and Archival System
 
-**Author:** Areesha Anum  
-**Institution:** Centrala University – School of Medicine  
-**Module:** Unit 11 – Advanced Programming  
-**Date:** April 2025
+Author: Areesha Anum
+Institution: Centrala University, School of Medicine
+University: Big Academy, Riyadh.
+Module: Unit 11, Advanced Programming
+Date: April 2025
+<img width="1432" height="381" alt="image" src="https://github.com/user-attachments/assets/d7a3ec0a-fd11-475b-bc5b-a09b2e12312f" />
+<img width="1600" height="695" alt="image" src="https://github.com/user-attachments/assets/9ebb08ce-1481-495a-8398-ec360f3c752d" />
+<img width="1003" height="407" alt="image" src="https://github.com/user-attachments/assets/e4b84da4-cddf-4881-8c42-4df43bfeb208" />
+<img width="1600" height="853" alt="image" src="https://github.com/user-attachments/assets/fcc73dd2-f7af-4e14-a768-40fea4797ed4" />
+<img width="1600" height="751" alt="image" src="https://github.com/user-attachments/assets/e7a29585-40c9-4abf-8ca5-0dea2f15a78d" />
+<img width="1600" height="805" alt="image" src="https://github.com/user-attachments/assets/87d5f34c-0e94-4e7e-b6a0-e16f63d0e8a6" />
 
----
+Table of Contents
+What This Project Does
+How the System Works
+Screenshots and Demo
+Key Features
+Technology Stack
+Project Structure
+Setup Instructions
+Running the Tests
+Docker Containerisation
+CI/CD Pipeline
+Validation Rules
+Design Pattern Used
+API Endpoints
+Version Control and Git Workflow
+Agile Methodology
+Author and Acknowledgements
+What This Project Does
 
-## 📖 Table of Contents
+This project was developed to automate the validation and archival of medical trial data files for Centrala University. In a real healthcare or research environment, large volumes of trial readings are collected daily and stored as CSV files on a remote FTP server. Before that data can be trusted and used for research, every file must be checked carefully to make sure it is complete, accurate, and in the correct format.
 
-1. [What This Project Does](#-what-this-project-does)
-2. [How It Works — The Big Picture](#-how-it-works--the-big-picture)
-3. [Screenshots & Demo](#-screenshots--demo)
-4. [Features at a Glance](#-features-at-a-glance)
-5. [Technology Stack](#-technology-stack)
-6. [Project Structure](#-project-structure)
-7. [Getting Started — Step by Step](#-getting-started--step-by-step)
-8. [Running the Tests](#-running-the-tests)
-9. [Docker Containerisation](#-docker-containerisation)
-10. [CI/CD Pipeline](#-cicd-pipeline)
-11. [Validation Rules Explained](#-validation-rules-explained)
-12. [Design Pattern — Chain of Responsibility](#-design-pattern--chain-of-responsibility)
-13. [API Endpoints Reference](#-api-endpoints-reference)
-14. [Version Control & Git Workflow](#-version-control--git-workflow)
-15. [Agile Methodology](#-agile-methodology)
-16. [Author & Acknowledgements](#-author--acknowledgements)
+This system handles that process automatically.
 
----
+It connects to an FTP server, downloads CSV files, validates each one through a structured pipeline, and then decides what should happen next. If a file passes all checks, it is archived into a date-based folder structure. If it fails validation, it is moved to quarantine and a detailed error log is generated. Each error log also includes a unique identifier retrieved from an external GUID API. To avoid duplicate work, the system tracks every processed file in a SQLite database. A web dashboard is also included so the full workflow can be monitored in a simple and visual way.
 
-## 🌟 What This Project Does
+This project was built using Test-Driven Development, which means the tests were written before the implementation, and it uses the Chain of Responsibility design pattern to keep the validation logic modular, maintainable, and easy to extend.
 
-Imagine you work at a hospital, and every day, thousands of medical trial readings are collected and stored in CSV files on a remote FTP server. Before these files can be used by researchers, **every single value needs to be checked** — wrong data could lead to incorrect conclusions about a drug or treatment.
+How the System Works
 
-**This application automates that entire process.**
+At a high level, the system follows a clear step-by-step process from file collection to final storage.
 
-It connects to the FTP server, downloads the CSV files, runs them through a strict validation pipeline, and then:
+First, CSV files are placed on the FTP server. The application connects to that server and downloads any new files that have not already been processed. Once a file is downloaded, the system checks its processing history using SQLite to make sure the same file is not handled twice.
 
-- ✅ **Valid files** are neatly archived into date-based folders (e.g., `2025/04/02/`)
-- ❌ **Invalid files** are quarantined and a detailed error log is generated with a unique ID from an external GUID API
-- 📊 **Everything is tracked** in a SQLite database so no file is ever processed twice
-- 🖥️ **A web dashboard** lets you monitor the whole process in real-time
+The file is then passed through a validation pipeline made up of five separate checks. The first validator checks whether the filename follows the required format: MED_DATA_YYYYMMDDHHMMSS.csv. The second confirms that all required headers are present. The third checks that no rows contain missing values. The fourth ensures that every batch_id is unique within the file. The fifth validates the numerical readings, making sure they are real numbers, do not exceed 9.9, and contain no more than three decimal places.
 
-The system was built using **Test-Driven Development (TDD)** — meaning every feature was tested *before* it was coded — and uses the **Chain of Responsibility** design pattern to make the validation pipeline clean, modular, and easy to extend.
+If the file passes every rule, it is archived into a structured folder path based on date, such as 2025/04/02/. If the file fails any validation step, it is moved into a rejected area and a JSON error log is created to record exactly what went wrong.
 
----
+The entire process can be monitored through the web dashboard, which provides real-time visibility into file processing activity, history, and errors.
 
-## 🏗 How It Works — The Big Picture
+Screenshots and Demo
+Main Dashboard
 
-Here's a visual overview of how data flows through the system from start to finish:
+The dashboard provides a simple overview of the system. It shows processing statistics, allows the user to scan the FTP server or upload a file manually, and displays the full file processing history in one place.
 
-![System Architecture](docs/screenshots/architecture.png)
+Error Logs Viewer
 
-**Step-by-step flow:**
+If a file fails validation, the system records detailed information about the failure. The error viewer shows which rule failed, where the issue occurred, and the unique error ID associated with that failure.
 
-1. **FTP Server** hosts CSV files from medical trials
-2. **FTP Service** connects and downloads new files
-3. **File Tracker** (SQLite) checks if a file has already been processed
-4. **Validation Pipeline** runs 5 checks in sequence using Chain of Responsibility:
-   - `FilenameValidator` → Is the filename in the correct `MED_DATA_YYYYMMDDHHMMSS.csv` format?
-   - `HeaderValidator` → Are all 12 required column headers present?
-   - `RowCompletenessValidator` → Does every row have all values filled in?
-   - `BatchValidator` → Are all `batch_id` values unique within the file?
-   - `ReadingValidator` → Are all 10 readings valid numbers, ≤ 9.9, with ≤ 3 decimal places?
-5. **Archive Service** moves valid files to a structured `YYYY/MM/DD/` archive
-6. **Error Logger** creates detailed JSON error logs for invalid files, fetching unique IDs from the GUID API
-7. **Web Dashboard** provides a visual interface for monitoring and control
+Test Results
 
----
+The system was developed using Test-Driven Development, and all 45 tests pass successfully. This demonstrates that the application is stable, reliable, and well covered by automated testing.
 
-## 📸 Screenshots & Demo
+Key Features
 
-### Main Dashboard
-The dashboard shows real-time processing statistics, action buttons for scanning the FTP server or uploading files manually, and a complete processing history table.
+This project includes a complete set of features needed to manage and validate medical trial CSV files in a structured and dependable way.
 
-![Dashboard](docs/screenshots/dashboard.png)
+The system connects to an FTP server and downloads files automatically. It uses SQLite to track which files have already been processed so that duplicates are never handled twice. It validates filenames against a strict naming convention, checks CSV headers and row completeness, verifies that all batch_id values are unique, and ensures that all trial readings follow the required numeric rules.
 
-### Error Logs Viewer
-When files fail validation, detailed error logs are shown here — including the exact rule that failed, which row the error was on, and a unique error ID for tracking.
+When a file fails validation, the system creates a structured JSON error log and generates a unique ID using an external GUID API. Valid files are archived into a date-based folder structure, while invalid files are quarantined for further review. The application also includes a Flask-based dashboard for monitoring the process, along with sample data generation scripts, Docker support, and a GitHub Actions CI/CD pipeline.
 
-![Error Logs](docs/screenshots/error_logs.png)
+Technology Stack
 
-### All Tests Passing (45/45)
-Every module was built using Test-Driven Development. All 45 tests pass successfully:
+This project was built using Python 3.11 because it is a strong and widely used language for backend development, data handling, and automation. Flask was selected for the web interface because it is lightweight and well suited for dashboard-style applications. SQLite was used for file tracking because it is simple, reliable, and does not require any separate database setup.
 
-![Test Results](docs/screenshots/test_results.png)
+Testing was done with pytest, which made it easier to create a clean and maintainable TDD workflow. FTP functionality was handled using ftplib and pyftpdlib, while Docker and Docker Compose were used to containerise the application and create a reproducible deployment environment. GitHub Actions was used to automate testing and Docker builds through CI/CD. The external GUID API from uuidtools.com was used to generate unique identifiers for error logging.
 
----
+From a design perspective, the Chain of Responsibility pattern was chosen because it fits the validation workflow naturally and allows each validation rule to be kept separate and focused.
 
-## ✨ Features at a Glance
-
-| Feature | Description |
-|---|---|
-| 📡 **FTP Integration** | Connects to remote FTP servers, lists and downloads CSV files automatically |
-| 🔍 **Duplicate Detection** | SQLite-based tracking prevents any file from being processed twice |
-| 📝 **Filename Validation** | Enforces the strict `MED_DATA_YYYYMMDDHHMMSS.csv` naming convention |
-| 📋 **CSV Structure Validation** | Validates headers, checks all data is complete, verifies format |
-| 🔢 **Batch Validation** | Ensures every `batch_id` is unique within each file |
-| 📊 **Reading Validation** | Checks all readings are numeric, don't exceed 9.9, and have ≤ 3 decimal places |
-| 📄 **Structured Error Logging** | Creates JSON error logs with unique IDs from an external GUID API |
-| 📁 **Date-Based Archival** | Valid files are archived in an organised `YYYY/MM/DD/` folder structure |
-| 🚫 **File Quarantine** | Invalid files are stored separately for investigation |
-| 🖥️ **Web Dashboard** | Flask-based UI for monitoring processing status and controlling the workflow |
-| 🧪 **Sample Data Generator** | Scripts to generate realistic test data for demonstrations |
-| 🐳 **Docker Containerisation** | Full Docker and Docker Compose support for easy deployment |
-| ⚙️ **CI/CD Pipeline** | GitHub Actions pipeline for automated testing and Docker builds |
-
----
-
-## 🛠 Technology Stack
-
-| Component | Technology | Why We Chose It |
-|---|---|---|
-| **Language** | Python 3.11+ | Industry standard for data processing, extensive libraries |
-| **Web Framework** | Flask | Lightweight, perfect for dashboards, easy to learn |
-| **Database** | SQLite | Zero-config, file-based, perfect for tracking processed files |
-| **Testing** | pytest | Most popular Python test framework, excellent fixtures support |
-| **FTP** | ftplib / pyftpdlib | Built-in FTP client + lightweight test server |
-| **Containerisation** | Docker & Docker Compose | Industry-standard containerisation and orchestration |
-| **CI/CD** | GitHub Actions | Free, integrated with GitHub, supports Python and Docker |
-| **GUID API** | uuidtools.com | External API for generating unique error identifiers |
-| **Design Pattern** | Chain of Responsibility | Clean separation of validation concerns |
-
----
-
-## 📂 Project Structure
-
-```
+Project Structure
 Areesha/
-├── app/                          # Main application package
-│   ├── __init__.py               # Package initialiser
-│   ├── config.py                 # Configuration from environment variables
-│   ├── models.py                 # Data models (ProcessingResult, etc.)
-│   ├── validator.py              # Chain of Responsibility validators
-│   ├── ftp_service.py            # FTP connection and file downloads
-│   ├── file_tracker.py           # SQLite duplicate tracking
-│   ├── archive_service.py        # File archival and quarantine
-│   ├── error_logger.py           # JSON error log creation
-│   ├── guid_service.py           # External GUID API with fallback
-│   ├── main.py                   # Processing pipeline orchestrator
+├── app/
+│   ├── __init__.py
+│   ├── config.py
+│   ├── models.py
+│   ├── validator.py
+│   ├── ftp_service.py
+│   ├── file_tracker.py
+│   ├── archive_service.py
+│   ├── error_logger.py
+│   ├── guid_service.py
+│   ├── main.py
 │   ├── ui/
 │   │   ├── __init__.py
-│   │   └── routes.py             # Flask web routes and views
+│   │   └── routes.py
 │   └── templates/
-│       ├── base.html             # Base HTML template with styling
-│       ├── dashboard.html        # Main dashboard page
-│       └── errors.html           # Error log viewer page
-├── tests/                        # Test suite (TDD)
+│       ├── base.html
+│       ├── dashboard.html
+│       └── errors.html
+├── tests/
 │   ├── __init__.py
-│   ├── conftest.py               # Shared pytest fixtures
-│   ├── test_filename_validation.py   # 8 tests for filename rules
-│   ├── test_csv_validation.py        # 7 tests for CSV structure
-│   ├── test_batch_rules.py           # 5 tests for batch IDs
-│   ├── test_reading_rules.py         # 9 tests for reading values
-│   ├── test_error_logging.py         # 6 tests for error logging + GUID
-│   └── test_tracker.py               # 8 tests for file tracking
+│   ├── conftest.py
+│   ├── test_filename_validation.py
+│   ├── test_csv_validation.py
+│   ├── test_batch_rules.py
+│   ├── test_reading_rules.py
+│   ├── test_error_logging.py
+│   └── test_tracker.py
 ├── scripts/
-│   ├── generate_sample_data.py   # Generates realistic test CSV files
-│   └── start_test_ftp.py         # Starts a local FTP server for testing
+│   ├── generate_sample_data.py
+│   └── start_test_ftp.py
 ├── data/
-│   ├── downloads/                # Where downloaded files land temporarily
-│   ├── archive/                  # Valid files archived here (YYYY/MM/DD/)
-│   ├── rejected/                 # Invalid files quarantined here
-│   └── sample_files/             # Generated sample CSV data
+│   ├── downloads/
+│   ├── archive/
+│   ├── rejected/
+│   └── sample_files/
 ├── logs/
-│   └── errors/                   # JSON error log files
+│   └── errors/
 ├── docs/
-│   ├── screenshots/              # Application screenshots
-│   ├── task1_paradigms.md        # Programming paradigms document
-│   └── agile_evaluation.md       # Agile evaluation document
+│   ├── screenshots/
+│   ├── task1_paradigms.md
+│   └── agile_evaluation.md
 ├── .github/
 │   └── workflows/
-│       └── ci.yml                # GitHub Actions CI/CD pipeline
-├── Dockerfile                    # Docker container configuration
-├── docker-compose.yml            # Multi-service orchestration
-├── requirements.txt              # Python dependencies
-├── run.py                        # Application entry point
-├── .env.example                  # Example environment variables
-├── .gitignore                    # Git ignore rules
-└── README.md                     # This file!
-```
+│       └── ci.yml
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
+├── run.py
+├── .env.example
+├── .gitignore
+└── README.md
 
----
+The structure was organised to keep the project clean and easy to navigate. Core logic is placed inside the app package, tests are grouped separately, helper scripts are placed in the scripts folder, and data, logs, and documentation each have dedicated directories.
 
-## 🚀 Getting Started — Step by Step
+Setup Instructions
+Prerequisites
 
-### Prerequisites
-- Python 3.11 or higher
-- pip (Python package manager)
-- Docker Desktop (for containerised deployment)
-- Git (for version control)
+Before running the project, the following tools should be installed:
 
-### 1. Clone the Repository
-
-```bash
+Python 3.11 or higher
+pip
+Docker Desktop
+Git
+Clone the Repository
 git clone <repository-url>
 cd Areesha
-```
-
-### 2. Create a Virtual Environment
-
-```bash
+Create a Virtual Environment
 python -m venv venv
 
-# On Windows:
+On Windows:
+
 venv\Scripts\activate
 
-# On Linux/Mac:
+On Linux or Mac:
+
 source venv/bin/activate
-```
-
-### 3. Install Dependencies
-
-```bash
+Install Dependencies
 pip install -r requirements.txt
-```
-
-### 4. Configure Environment Variables
-
-```bash
+Configure Environment Variables
 copy .env.example .env
-```
 
-Open `.env` in a text editor and configure your FTP server settings:
+Then update the .env file with the required FTP credentials:
 
-```env
 FTP_HOST=localhost
 FTP_PORT=2121
 FTP_USERNAME=centrala
 FTP_PASSWORD=medical2024
 FTP_REMOTE_DIR=/trial_data
-```
 
-> ⚠️ **Security Note:** The `.env` file contains sensitive credentials. It is included in `.gitignore` to prevent it from being committed to version control. Never share this file publicly.
+The .env file contains sensitive information and should never be shared publicly. It is excluded from version control through .gitignore.
 
-### 5. Run the Application
-
-```bash
+Run the Application
 python run.py
-```
 
-Open your web browser and go to: **http://localhost:5000**
+After starting the application, open a browser and go to:
 
-### 6. Start the Test FTP Server (in a separate terminal)
+http://localhost:5000
 
-```bash
+Start the Test FTP Server
+
+In a separate terminal, run:
+
 python scripts/start_test_ftp.py
-```
-
-### 7. Generate Sample Data
-
-```bash
+Generate Sample Data
 python scripts/generate_sample_data.py
-```
 
-This creates a mix of valid and invalid CSV files in `data/sample_files/` for testing purposes.
+This creates sample CSV files that can be used to test both valid and invalid scenarios.
 
----
+Running the Tests
 
-## 🧪 Running the Tests
+This project was developed using Test-Driven Development, so automated tests were a core part of the implementation from the beginning. The test suite contains 45 tests across multiple modules and covers the key parts of the system.
 
-This project was built using **Test-Driven Development (TDD)** — every feature was tested before it was implemented. The test suite contains **45 tests** across 6 test modules:
+To run all tests:
 
-```bash
-# Run all tests with verbose output
 pytest tests/ -v
 
-# Run with coverage report
+To run tests with coverage:
+
 pytest tests/ -v --cov=app --cov-report=term-missing
 
-# Run a specific test file
+To run a specific file:
+
 pytest tests/test_filename_validation.py -v
-```
 
-### Test Modules Explained
+The tests cover filename validation, CSV structure checks, batch validation, reading validation, error logging, and file tracking. This helps ensure the system behaves correctly and remains stable as it grows.
 
-| Test File | Tests | What It Covers |
-|---|---|---|
-| `test_filename_validation.py` | 8 | Filename format, prefix, extension, timestamp validity |
-| `test_csv_validation.py` | 7 | CSV parsing, required headers, row completeness |
-| `test_batch_rules.py` | 5 | Unique batch IDs, duplicate detection |
-| `test_reading_rules.py` | 9 | Numeric validation, max values, decimal places |
-| `test_error_logging.py` | 6 | JSON error logs, GUID API integration, fallback behaviour |
-| `test_tracker.py` | 8 | SQLite tracking, hashing, duplicate prevention, stats |
+Docker Containerisation
 
-**Total: 45 tests — all passing ✅**
+The application is fully containerised using Docker so it can run consistently across different environments.
 
----
+The Dockerfile uses Python 3.11 slim as the base image and installs only the required dependencies. It sets up the project, creates the necessary directories, and runs the Flask application on port 5000.
 
-## 🐳 Docker Containerisation
+To build the Docker image:
 
-The application is fully containerised using Docker, making deployment consistent and reproducible across any environment.
-
-### Dockerfile Overview
-
-The `Dockerfile` uses a multi-stage approach:
-- Base image: `python:3.11-slim` (lightweight)
-- Installs only required system dependencies
-- Copies and installs Python requirements first (for better caching)
-- Creates all required data directories
-- Generates sample data during build
-- Includes a health check endpoint
-- Runs the Flask application on port 5000
-
-### Build and Run with Docker
-
-```bash
-# Build the Docker image
 docker build -t medical-trial-validator .
 
-# Run the container
+To run the container:
+
 docker run -p 5000:5000 --name medical-validator medical-trial-validator
-```
 
-Then open your browser to: **http://localhost:5000**
+Docker Compose is also included for running the full setup more easily. It starts both the web application and a test FTP server together.
 
-### Using Docker Compose (Full Stack)
-
-Docker Compose runs **two services** together:
-1. **web** — The main Flask application
-2. **ftp-server** — A test FTP server pre-loaded with sample data
-
-```bash
-# Build and start all services
 docker-compose up --build
 
-# Run in the background (detached mode)
+To run it in detached mode:
+
 docker-compose up --build -d
 
-# View logs
-docker-compose logs -f
+To stop all services:
 
-# Stop all services
 docker-compose down
-```
 
-### Docker Compose Architecture
+This setup makes the system easier to deploy, test, and demonstrate in a consistent way.
 
-```
-┌─────────────────────────────────────────────────┐
-│                Docker Network                    │
-│                                                  │
-│  ┌──────────────────┐    ┌───────────────────┐  │
-│  │   web (Flask)     │    │  ftp-server       │  │
-│  │   Port: 5000      │───▶│  Port: 2121       │  │
-│  │                   │    │                   │  │
-│  │  • Validates CSV  │    │  • Hosts sample   │  │
-│  │  • Web dashboard  │    │    CSV files      │  │
-│  │  • SQLite DB      │    │  • pyftpdlib      │  │
-│  └──────────────────┘    └───────────────────┘  │
-│                                                  │
-│  Volumes: app-data, app-logs                     │
-└─────────────────────────────────────────────────┘
-```
+CI/CD Pipeline
 
----
+This project includes a GitHub Actions CI/CD pipeline that runs automatically whenever code is pushed or a pull request is opened.
 
-## ⚙️ CI/CD Pipeline
+The pipeline is split into three stages. The first stage runs the test suite and checks that all functionality works correctly. The second stage performs code quality checks to make sure the project is syntactically valid and properly structured. The final stage builds the Docker image, but only if the earlier stages succeed.
 
-The project includes a **GitHub Actions CI/CD pipeline** (`.github/workflows/ci.yml`) that runs automatically on every push and pull request.
-### Pipeline Status (Successful)
-This screen proves the pipeline's effectiveness. Every push triggers the "Test", "Lint", and "Docker Build" jobs, ensuring total system reliability.
+This setup helps ensure that only stable and tested code reaches the main branch. It also reflects good engineering practice by automating validation and reducing the risk of broken deployments.
 
-![CI/CD Pipeline](docs/screenshots/cicd_pipeline.png)
+A simplified view of the pipeline is shown below:
 
-### Pipeline Configuration
-
-#### 1. 🧪 Test Stage (`test`)
-- Checks out the code
-- Sets up Python 3.11
-- Installs all dependencies
-- Creates required directories
-- Runs all 45 tests with coverage reporting
-
-#### 2. 🔍 Code Quality Stage (`lint`)
-- Runs in parallel with tests
-- Checks every Python module compiles without syntax errors
-- Validates code structure
-
-#### 3. 🐳 Docker Build Stage (`docker`)
-- Only runs after tests pass successfully
-- Builds the full Docker image
-- Verifies the image was created correctly
-
-### Pipeline Configuration
-
-```yaml
 name: CI Pipeline
 
 on:
@@ -394,176 +255,85 @@ on:
     branches: [ main ]
 
 jobs:
-  test:        # Run all 45 tests with coverage
-  lint:        # Check code quality and syntax
-  docker:      # Build and verify Docker image (after tests pass)
-```
+  test:
+  lint:
+  docker:
+Validation Rules
 
-This ensures that **no broken code ever reaches the main branch** — if any test fails, the pipeline blocks the merge.
+Every file must pass all validation rules before it can be archived.
 
----
+The first rule checks the filename format. Each file must follow the exact pattern MED_DATA_YYYYMMDDHHMMSS.csv. If the name is incorrect, the file is rejected immediately.
 
-## ✅ Validation Rules Explained
+The second rule checks the CSV headers. The file must contain all required columns: batch_id, timestamp, and reading1 through reading10.
 
-When a CSV file is processed, it must pass **ALL** of the following rules. If even one rule fails, the entire file is rejected.
+The third rule checks for missing values. Every row must be complete and no field can be left blank.
 
-### Rule 1: Filename Format
-The filename must follow the exact pattern: `MED_DATA_YYYYMMDDHHMMSS.csv`
+The fourth rule checks that every batch_id is unique within the file. Duplicate IDs suggest corrupted or unreliable data.
 
-| Example | Valid? | Reason |
-|---|---|---|
-| `MED_DATA_20250402143000.csv` | ✅ Yes | Correct format |
-| `DATA_20250402143000.csv` | ❌ No | Wrong prefix (must be `MED_DATA_`) |
-| `MED_DATA_20250402.csv` | ❌ No | Timestamp too short |
-| `MED_DATA_20251301143000.csv` | ❌ No | Invalid date (month 13) |
+The fifth rule validates the reading values. Each reading must be numeric, must not be greater than 9.9, and must contain no more than three decimal places.
 
-### Rule 2: Required Headers
-All 12 headers must be present in the CSV:
-`batch_id`, `timestamp`, `reading1` through `reading10`
+This rule-based approach keeps the system strict and reliable, which is especially important for medical and research data.
 
-### Rule 3: No Missing Values
-Every single cell in every row must contain a value — no blanks allowed.
+Design Pattern Used
 
-### Rule 4: Unique Batch IDs
-Within a single file, every `batch_id` must be unique. Duplicate batch IDs indicate data corruption.
+The main design pattern used in this project is the Chain of Responsibility pattern.
 
-### Rule 5: Valid Readings
-All 10 reading columns must satisfy:
-- Must be a valid number (not text like "N/A" or "nil")
-- Must not exceed **9.9**
-- Must have at most **3 decimal places**
+This pattern was a good fit because the validation process naturally happens in stages. Each validator is responsible for one specific rule, such as checking the filename, validating the headers, or inspecting the readings. After completing its task, each validator passes the file to the next one in the chain.
 
----
+This approach keeps the code clean and easier to maintain. It also makes the system easy to extend. If a new validation rule needs to be added later, a new validator can simply be inserted into the chain without changing the existing ones. That makes the design modular, testable, and aligned with good software engineering practice.
 
-## 🔗 Design Pattern — Chain of Responsibility
+API Endpoints
 
-The validation pipeline implements the **Chain of Responsibility** design pattern. This is a behavioural design pattern where each validator in the chain:
+The application includes both web routes and JSON endpoints.
 
-1. **Checks one specific rule** — keeping each class focused and simple
-2. **Records any errors found** — collects detailed error messages
-3. **Passes the file to the next validator** — regardless of pass or fail
+HTML Routes
+Endpoint	Method	Description
+/	GET	Displays the main dashboard with processing statistics and file history
+/errors	GET	Displays the error logs and failure details
+Action Routes
+Endpoint	Method	Description
+/scan	POST	Scans the FTP server and processes all new CSV files
+/upload	POST	Uploads and validates a single CSV file manually
+JSON API Routes
+Endpoint	Method	Description
+/check-ftp	GET	Checks FTP connection status and returns the number of files available
+/api/stats	GET	Returns processing statistics in JSON format
+/api/records	GET	Returns processed file records in JSON format
+Version Control and Git Workflow
 
-```
-┌──────────────┐     ┌─────────────┐     ┌────────────────────┐
-│  Filename    │────▶│   Header    │────▶│  Row Completeness  │
-│  Validator   │     │  Validator  │     │    Validator        │
-└──────────────┘     └─────────────┘     └────────────────────┘
-                                                   │
-                                                   ▼
-                     ┌─────────────┐     ┌────────────────────┐
-                     │  Reading    │◀────│     Batch          │
-                     │  Validator  │     │    Validator        │
-                     └─────────────┘     └────────────────────┘
-```
+Git was used for version control throughout the project, with GitHub acting as the remote repository.
 
-**Why this pattern?**
-- **Easy to extend** — Want to add a new validation rule? Just create a new validator class and add it to the chain. No existing code needs to change.
-- **Single Responsibility** — Each validator does exactly one job, making the code easy to understand and test.
-- **Flexible ordering** — Validators can be reordered or removed without affecting others.
+The project followed a simple but effective branching strategy. The main branch was used for stable production-ready code, while develop was used as an integration branch during active development. Feature branches were used for individual tasks so that work could be developed in isolation before being merged.
 
----
+The project was built incrementally through meaningful commits, covering stages such as project setup, validation logic, FTP integration, duplicate tracking, error logging, dashboard development, Docker support, CI/CD setup, and documentation.
 
-## 🔌 API Endpoints Reference
+Some of the main Git commands used during development included:
 
-The web application exposes both HTML pages and JSON API endpoints:
-
-### HTML Pages
-
-| Endpoint | Method | Description |
-|---|---|---|
-| `/` | GET | Main dashboard with statistics and processing history |
-| `/errors` | GET | Detailed error log viewer with expandable details |
-
-### Action Endpoints
-
-| Endpoint | Method | Description |
-|---|---|---|
-| `/scan` | POST | Scans the FTP server and processes all new CSV files |
-| `/upload` | POST | Uploads and validates a single CSV file manually |
-
-### JSON API Endpoints
-
-| Endpoint | Method | Description |
-|---|---|---|
-| `/check-ftp` | GET | Checks FTP connection status and returns file count |
-| `/api/stats` | GET | Returns processing statistics as JSON |
-| `/api/records` | GET | Returns all processing records as JSON |
-
----
-
-## 📋 Version Control & Git Workflow
-
-This project uses **Git** for version control and is hosted on a remote **GitHub** repository.
-
-### Branching Strategy
-
-- **`main`** — Production-ready code. Protected by the CI/CD pipeline.
-- **`develop`** — Integration branch for feature development.
-- **Feature branches** — Individual features developed in isolation.
-
-### Commit History
-
-The project was developed incrementally with meaningful commits:
-
-1. `Initial project setup` — Project structure, configuration, and dependencies
-2. `Add validation pipeline` — Chain of Responsibility validators with TDD tests
-3. `Add FTP integration` — FTP service with download and listing capabilities
-4. `Add file tracking` — SQLite-based duplicate detection
-5. `Add error logging` — JSON error logs with GUID API integration
-6. `Add web dashboard` — Flask UI with dashboard and error log viewer
-7. `Add Docker support` — Dockerfile and docker-compose configuration
-8. `Add CI/CD pipeline` — GitHub Actions workflow for automated testing
-9. `Add documentation` — README, screenshots, and project documentation
-
-### Git Commands Used
-
-```bash
-# Initialise repository
 git init
-
-# Stage and commit changes
 git add .
 git commit -m "descriptive message"
-
-# Push to remote repository
 git remote add origin <repository-url>
 git push -u origin main
-
-# View commit history
 git log --oneline
-```
 
----
+Using Git in this way helped keep the work organised and made the development process more structured and traceable.
 
-## 💡 Agile Methodology
+Agile Methodology
 
-This project was developed using **Agile methodology** with the following ceremonies and practices:
+This project was developed using Agile principles.
 
-- **Sprint Planning** — Work was broken down into 2-week sprints with clear goals
-- **User Stories** — Features were defined from the perspective of end users
-- **Daily Standups** — Progress was reviewed regularly
-- **Sprint Reviews** — Completed features were demonstrated and reviewed
-- **Retrospectives** — Lessons learned were captured and applied to future sprints
-- **Kanban Board** — Tasks were tracked using a visual board (To Do → In Progress → Done)
+Work was divided into manageable stages, with features planned and implemented step by step. User stories helped define the system from the perspective of real use cases, while regular reviews made it easier to check progress and improve the project over time. Sprint-style thinking also helped break down the workload into smaller and more realistic deliverables.
 
-For a detailed evaluation of how Agile techniques contributed to this project, see [docs/agile_evaluation.md](docs/agile_evaluation.md).
+Practices such as planning, review, iteration, and reflection were all part of the development process. A visual task board was also used to track progress from work still to do, to work in progress, and finally to completed tasks.
 
----
+Using Agile in this project helped maintain clarity, improve organisation, and make the overall development process more manageable.
 
-## 👩‍💻 Author & Acknowledgements
+Author and Acknowledgements
 
-**Areesha Anum**  
-Centrala University – School of Medicine  
-Advanced Programming – Unit 11
+Areesha Anum
+Centrala University, School of Medicine
+Unit 11, Advanced Programming
 
-### Acknowledgements
-- **Centrala University** — For providing the project brief and guidance
-- **uuidtools.com** — For the free GUID generation API
-- **Python Software Foundation** — For the excellent standard library
-- **Flask team** — For the lightweight and elegant web framework
+Acknowledgements
 
----
-
-*This project demonstrates modern software engineering practices including Test-Driven Development, Design Patterns, Containerisation, CI/CD, and Agile methodology.*
-
-© 2025 Areesha Anum — Centrala University School of Medicine
+I would like to acknowledge Centrala University for providing the project brief and academic guidance for this work. I would also like to recognise the Python Software Foundation for the libraries and tools that supported development, the Flask team for the web framework, and uuidtools.com for the GUID generation API used in the error logging process.
